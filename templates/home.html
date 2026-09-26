@@ -1,0 +1,638 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+h1 {text-align: center;}
+#url_input {
+    display: flex;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+#url_input form {
+    display: flex;
+    width: 70%;
+}
+
+#target_url {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 18px;
+    border: 1px solid #ff6b35;
+    border-radius: 8px 0 0 8px;
+    outline: none;
+}
+
+#url_input button {
+    padding: 12px 24px;
+    font-size: 18px;
+    border: 1px solid #ff6b35;
+    color: white;
+    background-color: #ff6b35;
+    border-radius: 0 8px 8px 0;
+    cursor: pointer;
+}
+    button {padding: 6px 16px; font-size: 20px;}
+    #message {margin-top: 20px;}
+    #url_details {display: flex; align-items: center; justify-content: space-evenly;}
+
+    #url_details {
+    display: flex;
+    justify-content: center;
+    margin-top: 40px;
+}
+    /* table */ 
+    table {
+        width: 85%;
+        border-collapse: collapse;
+        background: white;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    thead {
+        background-color: #333;
+        color: white;
+    }
+
+    th,
+    td {
+        padding: 12px 15px;
+        text-align: left;
+    }
+
+    tbody tr {
+        border-bottom: 1px solid #ddd;
+    }
+
+    tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+
+    tbody tr:last-child {
+        border-bottom: none;
+    }
+
+
+    /*messge element*/
+
+    #message {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 400px;
+    padding: 25px;
+
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+
+    text-align: center;
+    z-index: 1000;
+}
+#refresh_btn{
+    color: white;
+    background-color: darkred;
+    font-weight: bold;
+    border: none;
+}
+#placeholdertext{
+    text-align: center;
+    color: gray;
+}
+.status-active {
+    color: green;
+    font-weight: bold;
+}
+
+.status-inactive {
+    color: gray;
+    font-weight: bold;
+}
+
+.deactivate-btn,
+.reactivate-btn {
+    padding: 7px 12px;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.deactivate-btn {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.deactivate-btn:hover {
+    background-color: #c0392b;
+}
+
+.reactivate-btn {
+    background-color: #777;
+    color: white;
+}
+
+.reactivate-btn:hover {
+    background-color: #555;
+}
+
+
+/* =========================
+   Secret Key Modal
+   ========================= */
+
+.secret-modal {
+    display: none;
+
+    position: fixed;
+
+    z-index: 2000;
+
+    left: 0;
+    top: 0;
+
+    width: 100%;
+    height: 100%;
+
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.secret-modal-content {
+    position: absolute;
+
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: 400px;
+
+    padding: 25px;
+
+    background: white;
+
+    border-radius: 12px;
+
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+
+    text-align: center;
+}
+
+.secret-modal-content h2 {
+    margin-top: 0;
+}
+
+#secretKeyInput {
+    width: 90%;
+
+    padding: 12px;
+
+    margin: 15px 0;
+
+    border: 1px solid #ccc;
+
+    border-radius: 6px;
+
+    font-size: 16px;
+}
+
+.modal-confirm {
+    padding: 9px 18px;
+
+    background-color: #333;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+.modal-cancel {
+    padding: 9px 18px;
+
+    background-color: #ddd;
+
+    color: #333;
+
+    border: none;
+
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+.modal-error {
+    color: red;
+
+    margin-top: 5px;
+}
+</style>
+
+<h1>{{dynamic_message}}</h1>
+
+<div id="url_input">
+    <form id="urlForm">
+        <input 
+            type="text" 
+            placeholder="Enter URL here..." 
+            id="target_url"
+        />
+        <button type="submit">Shorten it !!</button>
+    </form>
+
+</div>
+
+<!-- success message -->
+<div id="message"></div>
+
+<p id="placeholdertext">Use http://127.0.0.1:8000/{key} to go to target url</p>
+<p id="placeholdertext">Once deactivated they get permnantely delete within 7 days. Prior to that it can be reactivated.</p>
+
+<div id="url_details">
+    <table>
+        <thead>
+            <tr>
+                <td>Shortern URL</td>
+                <th>Target URL</th>
+                <th>Key</th>
+                <th>Clicks</th>
+                <th>Created at</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody id="urlTableBody">
+            {% for items in items_list %}
+            <tr id="row-{{items.key}}">
+                <td>
+                    <a href="http://127.0.0.1:8000/{{items.key}}" target="_blank">visit</a>
+                </td>
+                <td>{{ items.target_url }}</td>
+                <td>{{ items.key }}</td>
+                <td>{{ items.clicks }}</td>
+                <td>{{ items.created_at.strftime('%d-%m-%Y %H:%M:%S') }}</td>
+                <td class="Status-cell">
+                    {% if items.is_active %}
+                        <span class="status-active">Active</span>
+                    {% else %}
+                    <span class="status-inactive">Deactivated</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if items.is_active %}
+                        <button class="deactivate-btn" type="button"
+                     data-key="{{items.key}}">Deactivate</button>
+                    {% else %}
+                    <button type="button", class="reactivate-btn"
+                    data-key="{{items.key}}">Reactivate</button>
+                    {% endif %}
+                </td>
+
+            </tr> 
+            {% else %}
+
+            <tr>
+                <td colspan="6">No items found in the database.</td>
+            </tr> 
+
+            {% endfor %} 
+
+        </tbody> 
+    </table> 
+</div>
+<!-- Secret modal -->
+<div id="secretModal" class="secret-modal">
+
+    <div class="secret-modal-content">
+
+        <h2 id="modalTitle">
+            Deactivate URL
+        </h2>
+
+        <p id="modalMessage">
+            Enter your secret key to continue.
+        </p>
+
+        <input
+            type="password"
+            id="secretKeyInput"
+            placeholder="Enter secret key"
+            autocomplete="off"
+        >
+
+        <p
+            id="modalError"
+            class="modal-error">
+        </p>
+
+        <button
+            type="button"
+            id="modalConfirm"
+            class="modal-confirm">
+            Confirm
+        </button>
+
+        <button
+            type="button"
+            id="modalCancel"
+            class="modal-cancel">
+            Cancel
+        </button>
+
+    </div>
+
+</div>
+
+<script>
+    const form = document.getElementById('urlForm');
+    form.addEventListener("submit", async function(event) {
+        // stop normal HTML form submission
+        event.preventDefault();
+        
+        // fetch url value
+        const targetUrl = document.getElementById("target_url").value;
+        const message = document.getElementById("message")
+        
+        try{
+            const response = await fetch("/url",{
+                method : "POST",
+                headers:{
+                    "Content-Type":"application/json"
+                },
+                body: JSON.stringify({
+                    target_url : targetUrl
+                })
+            });
+
+            const data = await response.json();
+
+            // If fastapi return error
+            if(!response.ok){
+               
+                document.getElementById("message").innerHTML = 
+                `<p style="color:red;">${data.detail}</p>`;
+                
+                return;
+            }
+
+            // Show success message
+            message.innerHTML = 
+            `<p style="color: green;">
+                Successfully created your shortened URL!
+            </p>
+
+            <p>
+                <strong>Your Secret Key:</strong> ${data.secret_key}
+            </p>
+
+            <p style="color: red;">
+                <strong>⚠ Warning:</strong>
+                Please copy and save your secret key.
+                It will not be available again.
+            </p>
+             <button type="button" onclick="window.location.reload()" id="refresh_btn" >Refresh url list</button>`;
+
+            message.style.display = "block";
+
+            document.getElementById("target_url").value = "";
+        }
+        catch(error){
+            message.innerHTML = 
+            `<p style="color: red;"> Something went wrong. Please try again.</p>`;
+            message.style.display = "block";
+            console.error(error)
+        }
+    });
+
+    // activate and deactivate  logic
+    let selectedKey = null;
+    let selectedAction = null;
+
+
+/* =========================
+   Modal elements
+   ========================= */
+
+const modal =
+    document.getElementById("secretModal");
+
+const modalTitle =
+    document.getElementById("modalTitle");
+
+const modalMessage =
+    document.getElementById("modalMessage");
+
+const secretKeyInput =
+    document.getElementById("secretKeyInput");
+
+const modalError =
+    document.getElementById("modalError");
+
+const modalConfirm =
+    document.getElementById("modalConfirm");
+
+const modalCancel =
+    document.getElementById("modalCancel");
+
+
+/* =========================
+   Open modal
+   ========================= */
+
+function openSecretModal(key, action) {
+
+    selectedKey = key;
+    selectedAction = action;
+
+    secretKeyInput.value = "";
+    modalError.textContent = "";
+
+    if (action === "deactivate") {
+
+        modalTitle.textContent =
+            "Deactivate URL";
+
+        modalMessage.textContent =
+            "Enter your secret key to deactivate this URL.";
+
+        modalConfirm.textContent =
+            "Deactivate";
+
+    } else {
+
+        modalTitle.textContent =
+            "Reactivate URL";
+
+        modalMessage.textContent =
+            "Enter your secret key to reactivate this URL.";
+
+        modalConfirm.textContent =
+            "Reactivate";
+    }
+
+    modal.style.display = "block";
+
+    secretKeyInput.focus();
+}
+
+
+/* =========================
+   Close modal
+   ========================= */
+
+function closeSecretModal() {
+
+    modal.style.display = "none";
+
+    selectedKey = null;
+    selectedAction = null;
+
+    secretKeyInput.value = "";
+    modalError.textContent = "";
+}
+
+modalCancel.addEventListener(
+    "click",
+    closeSecretModal
+);
+
+
+/* =========================
+   Deactivate buttons
+   ========================= */
+
+document.querySelectorAll(".deactivate-btn")
+    .forEach(button => {
+
+        button.addEventListener("click", function () {
+
+            const key =
+                this.dataset.key;
+
+            openSecretModal(
+                key,
+                "deactivate"
+            );
+        });
+
+    });
+
+
+/* =========================
+   Reactivate buttons
+   ========================= */
+
+document.querySelectorAll(".reactivate-btn")
+    .forEach(button => {
+
+        button.addEventListener("click", function () {
+
+            const key =
+                this.dataset.key;
+
+            openSecretModal(
+                key,
+                "reactivate"
+            );
+        });
+
+    });
+
+
+/* =========================
+   Confirm action
+   ========================= */
+
+modalConfirm.addEventListener(
+    "click",
+    async function () {
+
+        const secretKey =
+            secretKeyInput.value.trim();
+
+        if (!secretKey) {
+
+            modalError.textContent =
+                "Please enter your secret key.";
+
+            return;
+        }
+
+
+        try {
+
+            let endpoint;
+
+            if (selectedAction === "deactivate") {
+
+                endpoint =
+                    `/admin/${encodeURIComponent(selectedKey)}/deactivate`;
+
+            } else {
+
+                endpoint =
+                    `/admin/${encodeURIComponent(selectedKey)}/reactivate`;
+
+            }
+
+
+            const response =
+                await fetch(endpoint, {
+
+                    method: "PATCH",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        secret_key: secretKey
+                    })
+                });
+
+
+            const data =
+                await response.json();
+
+
+            if (!response.ok) {
+
+                modalError.textContent =
+                    data.detail ||
+                    "Invalid secret key.";
+
+                return;
+            }
+
+
+            closeSecretModal();
+
+            window.location.reload();
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            modalError.textContent =
+                "Something went wrong. Please try again.";
+        }
+
+    }
+);
+
+</script>
+{% endblock content %} 
